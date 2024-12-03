@@ -21,7 +21,7 @@ function link_set = build_links(link_vectors)
     
     link_set = cell(size(link_vectors));
 
-
+    %%%%%%%%%%%%%
     % Loop over the vectors in link_vectors, constructing a matrix whose
     % first column is all zeros and whose second column is the link vector,
     % and saving this matrix in the corresponding column of link_set
