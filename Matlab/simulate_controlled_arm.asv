@@ -1,0 +1,111 @@
+% ME317_Assignment_script.m
+% Combines Trace Circle Code, Mass Matrix Computation, Controller Design, 
+% and Simulation of the System Motion
+
+% Define the trace circle function and other related functions
+[link_vectors, joint_axes, shape_to_draw, J, joint_velocity, T, ...
+          a_start, sol, alpha, ax, link_colors, link_set, l, p, l_trace, ...
+          link_set_history] = ME317_Assignment_trace_circle()
+    % (The trace circle code is placed here from the code provided earlier)
+    % Ensure all the necessary outputs are returned from this function
+
+
+% Mass matrix function (Placeholder for mass matrix generation)
+function M = compute_mass_matrix(link_vectors, joint_angles)
+    % Compute mass matrix for the given configuration
+    % (Implementation depends on the robot arm specifics)
+    % Placeholder implementation:
+    M = eye(length(joint_angles)); % Modify with correct mass matrix computation
+end
+
+% Controller design function using place command
+function K = design_controller(M)
+    % System parameters
+    n = length(M);  % Number of joints
+    A = [zeros(n), eye(n); zeros(n), zeros(n)];
+    B = [zeros(n, n); inv(M)];
+    
+    % Desired pole placement (p values can be adjusted later)
+    p = -100 * ones(1, n); % Initial pole placement values
+    
+    % Calculate K using place command
+    K = place(A, B, p);
+end
+
+% Main script execution
+% 1. Trace the circle and get the joint angle trajectories
+[link_vectors, joint_axes, shape_to_draw, J, joint_velocity, T, a_start, ...
+ sol, alpha, ax, link_colors, link_set, l, p, l_trace, link_set_history] = ME317_Assignment_trace_circle();
+
+% 2. Compute the mass matrices at specified time intervals
+times = [0, 1/8, 1/4, 3/8, 1/2, 5/8, 3/4, 7/8, 1];
+K_matrices = cell(length(times), 1);
+for i = 1:length(times)
+    t = times(i);
+    % Interpolate joint angles and velocities at time t
+    joint_angles = alpha(:, round(t * length(alpha)));
+    
+    % Compute mass matrix for the configuration
+    M = compute_mass_matrix(link_vectors, joint_angles);
+    
+    % Design the controller and save the K matrix
+    K_matrices{i} = design_controller(M);
+end
+
+% 3. Define the controller that generates forces
+controller = @(t, joint_angles, joint_velocities) control_forces(t, joint_angles, joint_velocities, alpha, K_matrices);
+
+% 4. Define the function to calculate control forces
+function forces = control_forces(t, joint_angles, joint_velocities, alpha, K_matrices)
+    % Find the nearest time point (rounded to the nearest 1/8th)
+    nearest_t_index = round(t * 8) + 1;
+    K = K_matrices{nearest_t_index};
+    
+    % Get the reference joint angles and velocities at the current time
+    ref_angles = alpha(:, nearest_t_index);
+    ref_velocities = joint_velocity(t, ref_angles);
+    
+    % Calculate the error between current and reference angles/velocities
+    angle_error = joint_angles - ref_angles;
+    velocity_error = joint_velocities - ref_velocities;
+    
+    % Control forces (K * error)
+    forces = -K * [angle_error; velocity_error];
+end
+
+% 5. Simulate the system motion with the controller
+% Define the differential equation solver with the controller applied
+controller_dynamics = @(t, y) system_dynamics(t, y, controller);
+[T, Y] = ode45(controller_dynamics, T, a_start);
+
+% Plot the results (for visualizing motion)
+figure;
+plot3(Y(:,1), Y(:,2), Y(:,3), '-o');
+xlabel('X');
+ylabel('Y');
+zlabel('Z');
+title('Robot Arm Motion with Controller');
+
+% 6. Modify the controller to use p values of -1/10 instead of -1/100
+function K = design_controller_v2(M)
+    n = length(M);
+    A = [zeros(n), eye(n); zeros(n), zeros(n)];
+    B = [zeros(n, n); inv(M)];
+    
+    % Update pole placement values
+    p = -1/10 * ones(1, n); % Modify with new pole placement
+    
+    K = place(A, B, p);
+end
+
+% Helper functions for the system dynamics (Placeholder)
+function dydt = system_dynamics(t, y, controller)
+    % Placeholder dynamics (Update with actual robot model)
+    joint_angles = y(1:3); % Example for 3 joints
+    joint_velocities = y(4:6); % Example for 3 joints velocities
+    
+    forces = controller(t, joint_angles, joint_velocities);
+    
+    % Define robot arm dynamics (update based on robot model)
+    dydt = [joint_velocities; forces];
+end

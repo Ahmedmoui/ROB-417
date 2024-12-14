@@ -15,7 +15,7 @@ function [link_vectors,...
     % Specify link vectors as a 1x3 cell array of 3x1 vectors, named
     % 'link_vectors'
 
-    link_vectors = {[1;0;0], [1;0;0], [0;1;0]};
+    link_vectors = {[1;0;0], [1;0;0], [.5;0;0]};
     
     % Specify link radii as 1/20 the link length
     for idx = 1:length(link_vectors)
